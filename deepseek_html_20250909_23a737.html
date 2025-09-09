@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Real-time KAYUL Dashboard</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+body { 
+  background-color: #0b0c1e; 
+  color: #fff; 
+  font-family: Arial, sans-serif; 
+  padding-bottom: 20px;
+}
+.dashboard-header { 
+  padding: 15px 0; 
+  background-color: #1a1b38; 
+  text-align: center; 
+  border-bottom: 2px solid #00f0ff; 
+  position: relative;
+}
+.card { 
+  background-color: #1a1b38; 
+  border: 1px solid #00f0ff; 
+  margin-bottom: 15px; 
+  padding: 12px;
+  height: 100%;
+}
+.card-title { 
+  color: #00f0ff; 
+  font-size: 1rem; 
+  margin-bottom: 8px; 
+}
+.table { 
+  background-color: #1a1b38; 
+  border: 1px solid #00f0ff; 
+  color: #fff; 
+  font-size: 0.85rem; 
+}
+.chart-container { 
+  width: 100%; 
+  height: 220px; 
+}
+.card-text {
+  color: #ffffff !important;
+  font-size: 1.1rem;
+  margin-bottom: 0;
+}
+
+/* Botón de toggle mejorado */
+#toggleLocation {
+  position: fixed;
+  top: 15px;
+  right: 15px;
+  z-index: 1000;
+  background: #00f0ff;
+  color: #0b0c1e;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.7);
+}
+
+/* Panel de ubicación */
+#locationPanel {
+  margin: 15px auto;
+  padding: 15px;
+  max-width: 95%;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+/* Media queries para iPad */
+@media (min-width: 768px) and (max-width: 1199px) {
+  .dashboard-header h2 { 
+    font-size: 1.8rem; 
+    padding: 0 40px;
+  }
+  
+  .container {
+    padding-left: 10px;
+    padding-right: 10px;
+    max-width: 100%;
+  }
+  
+  .row {
+    margin-left: -8px;
+    margin-right: -8px;
+  }
+  
+  .row > * {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+  
+  .chart-container {
+    height: 200px;
+  }
+  
+  /* Ajustar grid para iPad */
+  .col-ipad-4 {
+    flex: 0 0 auto;
+    width: 33.333333%;
+  }
+  
+  .col-ipad-6 {
+    flex: 0 0 auto;
+    width: 50%;
+  }
+  
+  /* Mejorar visualización de tablas */
+  .table-responsive {
+    font-size: 0.8rem;
+  }
+}
+
+/* Para orientación horizontal en iPad */
+@media (min-width: 768px) and (max-width: 1199px) and (orientation: landscape) {
+  .chart-container {
+    height: 180px;
+  }
+  
+  .card-title {
+    font-size: 0.9rem;
+  }
+  
+  .card-text {
+    font-size: 1rem;
+  }
+}
+
+/* Ajustes para evitar desbordamiento */
+.table-responsive {
+  overflow-x: auto;
+}
+
+/* Ajustar botón en dispositivos móviles */
+@media (max-width: 767px) {
+  #toggleLocation {
+    top: 10px;
+    right: 10px;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+  }
+}
+</style>
+</head>
+<body>
+
+<div class="dashboard-header">
+  <h2>KAYUL Mission Control Dashboard</h2>
+  <!-- Botón de toggle mejorado -->
+  <button id="toggleLocation">Toggle Signal</button>
+
+  <!-- Layout de ubicación -->
+  <div id="locationPanel" style="border: 1px solid #ff3366; background: #1e0b12;">
+    <div style="font-weight:600; color:#ff3366; margin-bottom:8px;">Astronaut Location</div>
+  
+    <div style="color:#ff99aa;">❌ No signal detected – unable to locate crew on Kayul</div>
+    <div style="margin-top:12px; height:180px; 
+                background:repeating-linear-gradient(45deg,#300,#300 10px,#400 10px,#400 20px); 
+                border:1px solid #ff3366; border-radius:6px; 
+                display:flex; align-items:center; justify-content:center;">
+      <div style="padding:8px 12px; border:1px dashed #ff3366; border-radius:6px; color:#ffccd2;">
+        NO SIGNAL
+      </div>
+    </div>
+  </div>
+
+  <p>Monitoring KAYUL telemetry, crew status and mission stats</p>
+</div>
+
+<div class="container mt-3">
+
+  <!-- Info Cards - Mejor distribución para iPad -->
+  <div class="row g-2">
+    <div class="col-6 col-md-3"><div class="card text-center"><h5 class="card-title">Crew Members</h5><p class="card-text">2 onboard</p></div></div>
+    <div class="col-6 col-md-3"><div class="card text-center"><h5 class="card-title">Mission Status</h5><p class="card-text">Active</p></div></div>
+    <div class="col-6 col-md-3"><div class="card text-center"><h5 class="card-title">Fuel Level</h5><p class="card-text" id="fuelLevel">78%</p></div></div>
+    <div class="col-6 col-md-3"><div class="card text-center"><h5 class="card-title">Speed</h5><p class="card-text" id="speed">27,000 km/h</p></div></div>
+  </div>
+
+  <!-- Row Extra: More Info Cards -->
+  <div class="row g-2 mt-2">
+    <div class="col-6 col-md-3">
+      <div class="card text-center">
+        <h5 class="card-title">Cabin Temp</h5>
+        <p class="card-text" id="cabinTemp">22 °C</p>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card text-center">
+        <h5 class="card-title">Cabin Pressure</h5>
+        <p class="card-text" id="cabinPressure">101.3 kPa</p>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card text-center">
+        <h5 class="card-title">Distance Travelled</h5>
+        <p class="card-text" id="distanceTravelled">12,450 km</p>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card text-center">
+        <h5 class="card-title">Comms Status</h5>
+        <p class="card-text" id="commsStatus">Online</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 2: Main Charts - Ajuste para iPad -->
+  <div class="row g-2 mt-2">
+    <div class="col-12 col-md-6 col-lg-4"><div class="card"><h5 class="card-title">Oxygen Level (%)</h5><canvas id="oxygenChart" class="chart-container"></canvas></div></div>
+    <div class="col-12 col-md-6 col-lg-4"><div class="card"><h5 class="card-title">Fuel Consumption (Liters)</h5><canvas id="fuelChart" class="chart-container"></canvas></div></div>
+    <div class="col-12 col-md-6 col-lg-4"><div class="card"><h5 class="card-title">Crew Vital Signs</h5><canvas id="vitalChart" class="chart-container"></canvas></div></div>
+  </div>
+
+  <!-- Row 3: Secondary Charts - Ajuste para iPad -->
+  <div class="row g-2 mt-2">
+    <div class="col-12 col-md-6"><div class="card"><h5 class="card-title">Subsystem Status Distribution</h5><canvas id="subsystemPieChart" class="chart-container"></canvas></div></div>
+    <div class="col-12 col-md-6"><div class="card"><h5 class="card-title">Mission Events Over Time</h5><canvas id="eventLineChart" class="chart-container"></canvas></div></div>
+  </div>
+
+  <!-- Row 4: Secondary Charts - Ajuste para iPad -->
+  <div class="row g-2 mt-2">
+    <div class="col-12 col-md-6"><div class="card"><h5 class="card-title">Radar: KAYUL Systems Health</h5><canvas id="systemRadarChart" class="chart-container"></canvas></div></div>
+    <div class="col-12 col-md-6"><div class="card"><h5 class="card-title">Speed vs Fuel</h5><canvas id="speedFuelChart" class="chart-container"></canvas></div></div>
+  </div>
+
+  <!-- Row 5: Extra Mini-Charts - Ajuste para iPad -->
+  <div class="row g-2 mt-2">
+    <div class="col-6 col-md-3"><div class="card"><h5 class="card-title">Solar Energy (kW)</h5><canvas id="solarChart" class="chart-container"></canvas></div></div>
+    <div class="col-6 col-md-3"><div class="card"><h5 class="card-title">Radiation Level (µSv)</h5><canvas id="radiationChart" class="chart-container"></canvas></div></div>
+    <div class="col-6 col-md-3"><div class="card"><h5 class="card-title">External Temp (°C)</h5><canvas id="extTempChart" class="chart-container"></canvas></div></div>
+    <div class="col-6 col-md-3"><div class="card"><h5 class="card-title">Battery Level (%)</h5><canvas id="batteryChart" class="chart-container"></canvas></div></div>
+  </div>
+
+  <!-- Row 6: Mission Logs Table - Mejorado para iPad -->
+  <div class="row mt-2">
+    <div class="col-12">
+      <div class="card">
+        <h5 class="card-title">Mission Logs</h5>
+        <div class="table-responsive">
+          <table class="table table-striped table-bordered text-white" id="missionLogs">
+            <thead>
+              <tr><th>Timestamp</th><th>Event</th><th>Subsystem</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>2025-08-31 18:00</td><td>Launch initiated</td><td>Propulsion</td><td>Success</td></tr>
+              <tr><td>2025-08-31 18:15</td><td>Orbit achieved</td><td>Navigation</td><td>Success</td></tr>
+              <tr><td>2025-08-31 18:30</td><td>Oxygen check</td><td>Life Support</td><td>Nominal</td></tr>
+              <tr><td>2025-08-31 19:45</td><td>Course correction</td><td>Navigation</td><td>Success</td></tr>
+              <tr><td>2025-08-31 21:20</td><td>System diagnostic</td><td>Maintenance</td><td>Nominal</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function getRandom(min,max){ return Math.round(Math.random()*(max-min)+min); }
+
+  // Utility to keep last 100 values
+  function pushData(dataset, value){
+    dataset.push(value);
+    if(dataset.length>100){ dataset.shift(); }
+  }
+
+  // ---- Create Charts ----
+  const oxygenData = []; const fuelData=[]; const solarData=[]; const radiationData=[]; const extTempData=[]; const batteryData=[];
+  const labels = Array.from({length:100}, (_,i)=>i);
+
+  const oxygenChart = new Chart(document.getElementById('oxygenChart').getContext('2d'), {
+    type:'line', data:{labels:labels, datasets:[{label:'Oxygen Level (%)', data:oxygenData, borderColor:'#00ffcc', backgroundColor:'rgba(0,255,204,0.2)', fill:true, tension:0.4}]},
+    options:{responsive:true, animation:false, scales:{y:{beginAtZero:false, max:100}}}
+  });
+
+  const fuelChart = new Chart(document.getElementById('fuelChart').getContext('2d'), {
+    type:'line', data:{labels:labels, datasets:[{label:'Fuel Consumed (L)', data:fuelData, borderColor:'#ff6600', backgroundColor:'rgba(255,102,0,0.3)', fill:true, tension:0.3}]},
+    options:{responsive:true, animation:false, scales:{y:{beginAtZero:true}}}
+  });
+
+  const vitalChart = new Chart(document.getElementById('vitalChart').getContext('2d'), {
+    type:'radar', data:{labels:['Heart Rate','Blood Pressure','Oxygen Saturation','Temperature','Stress Level'], datasets:[{label:'Average Crew Metrics', data:[72,120,98,37,20], backgroundColor:'rgba(0,255,204,0.2)', borderColor:'#00ffcc'}]},
+    options:{responsive:true, animation:false, scales:{r:{min:0,max:200}}}
+  });
+
+  const subsystemPieChart = new Chart(document.getElementById('subsystemPieChart').getContext('2d'), {
+    type:'pie', data:{labels:['Propulsion','Navigation','Life Support','Communication','Power'], datasets:[{data:[90,85,95,80,88], backgroundColor:['#ff6384','#36a2eb','#ffce56','#4bc0c0','#9966ff']}]}, options:{responsive:true, animation:false}
+  });
+
+  const eventLineChart = new Chart(document.getElementById('eventLineChart').getContext('2d'), {
+    type:'line', data:{labels:labels, datasets:[{label:'Events Count', data:[], borderColor:'#ffcc00', fill:false, tension:0.3}]}, options:{responsive:true, animation:false, scales:{y:{beginAtZero:true}}}
+  });
+
+  const systemRadarChart = new Chart(document.getElementById('systemRadarChart').getContext('2d'), {
+    type:'radar', data:{labels:['Propulsion','Navigation','Life Support','Communication','Power'], datasets:[{label:'System Health (%)', data:[95,90,98,85,92], backgroundColor:'rgba(255,102,0,0.2)', borderColor:'#ff6600'}]},
+    options:{responsive:true, animation:false, scales:{r:{min:0,max:100}}}
+  });
+
+  const speedFuelChart = new Chart(document.getElementById('speedFuelChart').getContext('2d'), {
+    type:'scatter', data:{datasets:[{label:'Speed vs Fuel', data:[], backgroundColor:'#36a2eb'}]}, 
+    options:{responsive:true, animation:false, scales:{x:{title:{display:true,text:'Speed (km/h)'}},y:{title:{display:true,text:'Fuel (L)'}}}}
+  });
+
+  const solarChart = new Chart(document.getElementById('solarChart').getContext('2d'), {
+    type:'line', data:{labels:labels, datasets:[{label:'Solar kW', data:solarData, borderColor:'#ffcc00', backgroundColor:'rgba(255,204,0,0.2)', fill:true}]},
+    options:{responsive:true, animation:false, scales:{y:{beginAtZero:true}}}
+  });
+
+  const radiationChart = new Chart(document.getElementById('radiationChart').getContext('2d'), {
+    type:'line', data:{labels:labels, datasets:[{label:'Radiation µSv', data:radiationData, borderColor:'#ff0000', backgroundColor:'rgba(255,0,0,0.2)', fill:true}]},
+    options:{responsive:true, animation:false, scales:{y:{beginAtZero:true}}}
+  });
+
+  const extTempChart = new Chart(document.getElementById('extTempChart').getContext('2d'), {
+    type:'line', data:{labels:labels, datasets:[{label:'External Temp °C', data:extTempData, borderColor:'#00ccff', backgroundColor:'rgba(0,204,255,0.2)', fill:true}]},
+    options:{responsive:true, animation:false, scales:{y:{beginAtZero:true}}}
+  });
+
+  const batteryChart = new Chart(document.getElementById('batteryChart').getContext('2d'), {
+    type:'line', data:{labels:labels, datasets:[{label:'Battery %', data:batteryData, borderColor:'#33ff77', backgroundColor:'rgba(51,255,119,0.2)', fill:true}]},
+    options:{responsive:true, animation:false, scales:{y:{beginAtZero:true, max:100}}}
+  });
+
+  // ---- Update Dashboard ----
+  function updateDashboard(){
+    // Info Cards
+    document.getElementById('fuelLevel').innerText = getRandom(50,100)+'%';
+    document.getElementById('speed').innerText = getRandom(26000,30000).toLocaleString()+' km/h';
+    document.getElementById('cabinTemp').innerText = getRandom(20,28) + ' °C';
+    document.getElementById('cabinPressure').innerText = getRandom(98,105) + ' kPa';
+    document.getElementById('distanceTravelled').innerText = getRandom(12000,15000).toLocaleString() + ' km';
+    document.getElementById('commsStatus').innerText = (Math.random() > 0.1) ? 'Online' : 'Offline';
+
+    // Push data for 100-value rolling arrays
+    pushData(oxygenData, getRandom(90,100));
+    pushData(fuelData, getRandom(1000,5000));
+    pushData(solarData, getRandom(5,20));
+    pushData(radiationData, getRandom(100,300));
+    pushData(extTempData, getRandom(-150,120));
+    pushData(batteryData, getRandom(40,100));
+
+    oxygenChart.update();
+    fuelChart.update();
+    solarChart.update();
+    radiationChart.update();
+    extTempChart.update();
+    batteryChart.update();
+
+    // Events line
+    pushData(eventLineChart.data.datasets[0].data, getRandom(0,5));
+    eventLineChart.update();
+
+    // Radar charts randomize
+    vitalChart.data.datasets[0].data = vitalChart.data.datasets[0].data.map(()=>getRandom(30,150));
+    vitalChart.update();
+    subsystemPieChart.data.datasets[0].data = subsystemPieChart.data.datasets[0].data.map(()=>getRandom(70,100));
+    subsystemPieChart.update();
+    systemRadarChart.data.datasets[0].data = systemRadarChart.data.datasets[0].data.map(()=>getRandom(80,100));
+    systemRadarChart.update();
+
+    // Speed vs Fuel
+    pushData(speedFuelChart.data.datasets[0].data, {x:getRandom(26000,30000), y:getRandom(3000,5000)});
+    speedFuelChart.update();
+  }
+
+  // Actualizar cada 3 segundos
+  setInterval(updateDashboard, 3000);
+</script>
+
+<script>
+  // Script mejorado para el botón de toggle
+  const toggleBtn = document.getElementById("toggleLocation");
+  const panel = document.getElementById("locationPanel");
+
+  let danger = true;
+  
+  // Hacer el botón más visible
+  toggleBtn.textContent = "Toggle Signal";
+  toggleBtn.style.backgroundColor = "#00f0ff";
+  toggleBtn.style.color = "#0b0c1e";
+  
+  toggleBtn.addEventListener("click", () => {
+    if (danger) {
+      // Cambiar a estado OK
+      panel.innerHTML = `
+        <div style="font-weight:600; color:#00f0ff; margin-bottom:8px;">Astronaut Location</div>
+        <div style="color:#7cf6ff;">✅ Signal locked – crew located on Kayul surface</div>
+        <div style="margin-top:12px; height:180px; 
+                    background:linear-gradient(135deg,#00131f,#00263d); 
+                    border:1px solid #00f0ff; border-radius:6px; 
+                    display:flex; align-items:center; justify-content:center;">
+          <div style="width:64px; height:64px; border-radius:50%; border:2px dashed #00f0ff; display:flex; align-items:center; justify-content:center;">
+            <div style="width:10px; height:10px; background:#00f0ff; border-radius:50%;"></div>
+          </div>
+        </div>
+      `;
+      panel.style.border = "1px solid #00f0ff";
+      panel.style.background = "#0f1b2e";
+      toggleBtn.style.backgroundColor = "#ff3366";
+      toggleBtn.style.color = "#fff";
+    } else {
+      // Volver a estado PELIGRO
+      panel.innerHTML = `
+        <div style="font-weight:600; color:#ff3366; margin-bottom:8px;">Astronaut Location</div>
+        <div style="color:#ff99aa;">❌ No signal detected – unable to locate crew on Kayul</div>
+        <div style="margin-top:12px; height:180px; 
+                    background:repeating-linear-gradient(45deg,#300,#300 10px,#400 10px,#400 20px); 
+                    border:1px solid #ff3366; border-radius:6px; 
+                    display:flex; align-items:center; justify-content:center;">
+          <div style="padding:8px 12px; border:1px dashed #ff3366; border-radius:6px; color:#ffccd2;">
+            NO SIGNAL
+          </div>
+        </div>
+      `;
+      panel.style.border = "1px solid #ff3366";
+      panel.style.background = "#1e0b12";
+      toggleBtn.style.backgroundColor = "#00f0ff";
+      toggleBtn.style.color = "#0b0c1e";
+    }
+    danger = !danger;
+  });
+</script>
+
+</body>
+</html>
